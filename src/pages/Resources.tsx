@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -31,7 +30,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/use-toast";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -54,139 +52,30 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { ResourceService } from "@/services/ResourceService";
 
-// Mock data for resources
-const initialResources = [
-  {
-    id: 1,
-    title: "Introduction to Quantum Mechanics",
-    type: "book",
-    author: "David J. Griffiths",
-    year: 2004,
-    topic: "Physics",
-    url: "https://example.com/quantum-mechanics",
-    downloadCount: 123,
-    citationCount: 45,
-    description: "A comprehensive introduction to quantum mechanics, covering the Schrodinger equation, angular momentum, and perturbation theory."
-  },
-  {
-    id: 2,
-    title: "Deep Learning with Python",
-    type: "research",
-    author: "François Chollet",
-    year: 2017,
-    topic: "Computer Science",
-    url: "https://example.com/deep-learning-python",
-    downloadCount: 456,
-    citationCount: 78,
-    description: "A practical guide to deep learning, covering convolutional neural networks, recurrent neural networks, and autoencoders."
-  },
-  {
-    id: 3,
-    title: "Calculus: Early Transcendentals",
-    type: "course",
-    author: "James Stewart",
-    year: 2015,
-    topic: "Mathematics",
-    url: "https://example.com/calculus",
-    downloadCount: 789,
-    citationCount: 90,
-    description: "A comprehensive calculus textbook, covering limits, derivatives, integrals, and infinite series."
-  },
-  {
-    id: 4,
-    title: "The C++ Programming Language",
-    type: "book",
-    author: "Bjarne Stroustrup",
-    year: 2013,
-    topic: "Computer Science",
-    url: "https://example.com/cpp",
-    downloadCount: 321,
-    citationCount: 54,
-    description: "The definitive guide to the C++ programming language, covering the core language features, standard library, and design principles."
-  },
-  {
-    id: 5,
-    title: "Principles of Economics",
-    type: "book",
-    author: "N. Gregory Mankiw",
-    year: 2014,
-    topic: "Economics",
-    url: "https://example.com/economics",
-    downloadCount: 654,
-    citationCount: 87,
-    description: "A comprehensive economics textbook, covering microeconomics, macroeconomics, and international economics."
-  },
-  {
-    id: 6,
-    title: "Introduction to Algorithms",
-    type: "book",
-    author: "Thomas H. Cormen",
-    year: 2009,
-    topic: "Computer Science",
-    url: "https://example.com/algorithms",
-    downloadCount: 987,
-    citationCount: 12,
-    description: "A comprehensive algorithms textbook, covering sorting, searching, graph algorithms, and dynamic programming."
-  },
-  {
-    id: 7,
-    title: "Organic Chemistry",
-    type: "book",
-    author: "Paula Yurkanis Bruice",
-    year: 2016,
-    topic: "Chemistry",
-    url: "https://example.com/organic-chemistry",
-    downloadCount: 432,
-    citationCount: 65,
-    description: "A comprehensive organic chemistry textbook, covering nomenclature, structure, reactions, and mechanisms."
-  },
-  {
-    id: 8,
-    title: "Probability and Statistics",
-    type: "book",
-    author: "Sheldon Ross",
-    year: 2014,
-    topic: "Mathematics",
-    url: "https://example.com/probability-statistics",
-    downloadCount: 765,
-    citationCount: 89,
-    description: "A comprehensive probability and statistics textbook, covering probability, random variables, distributions, and hypothesis testing."
-  },
-  {
-    id: 9,
-    title: "Modern Physics",
-    type: "book",
-    author: "Kenneth S. Krane",
-    year: 2012,
-    topic: "Physics",
-    url: "https://example.com/modern-physics",
-    downloadCount: 210,
-    citationCount: 34,
-    description: "A comprehensive modern physics textbook, covering relativity, quantum mechanics, atomic physics, and nuclear physics."
-  },
-  {
-    id: 10,
-    title: "Data Structures and Algorithm Analysis in C++",
-    type: "book",
-    author: "Mark Allen Weiss",
-    year: 2014,
-    topic: "Computer Science",
-    url: "https://example.com/data-structures-cpp",
-    downloadCount: 543,
-    citationCount: 76,
-    description: "A comprehensive data structures and algorithm analysis textbook, covering arrays, linked lists, trees, graphs, and sorting algorithms."
-  }
-];
+export interface Resource {
+  id: number;
+  title: string;
+  type: string;
+  author: string;
+  year: number;
+  topic: string;
+  url: string;
+  downloadCount: number;
+  citationCount: number;
+  description: string;
+}
 
 export default function Resources() {
   const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState("");
-  const [resources, setResources] = useState(initialResources);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
-  const [newResource, setNewResource] = useState({
-    id: resources.length + 1,
+  const [isLoading, setIsLoading] = useState(true);
+  const [newResource, setNewResource] = useState<Resource>({
+    id: 0,
     title: "",
     type: "book",
     author: "",
@@ -198,7 +87,6 @@ export default function Resources() {
     description: ""
   });
   
-  // Advanced filter states
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [yearRange, setYearRange] = useState([2000, new Date().getFullYear()]);
   const [sortBy, setSortBy] = useState("relevance");
@@ -208,7 +96,25 @@ export default function Resources() {
 
   useEffect(() => {
     document.title = "Resources | EduCentral";
+    loadResources();
   }, []);
+
+  const loadResources = async () => {
+    setIsLoading(true);
+    try {
+      const loadedResources = await ResourceService.getResources();
+      setResources(loadedResources);
+    } catch (error) {
+      console.error("Error loading resources:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load resources. Please try again later."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -246,7 +152,6 @@ export default function Resources() {
     return searchMatch && topicMatch && typeMatch && yearMatch && citationMatch;
   });
 
-  // Sort resources based on sortBy value
   const sortedResources = [...filteredResources].sort((a, b) => {
     switch(sortBy) {
       case "newest":
@@ -258,7 +163,6 @@ export default function Resources() {
       case "most-downloaded":
         return b.downloadCount - a.downloadCount;
       default: // relevance or any other value
-        // For relevance, prioritize title matches first
         const aRelevance = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ? 2 : 
                           a.author.toLowerCase().includes(searchQuery.toLowerCase()) ? 1 : 0;
         const bRelevance = b.title.toLowerCase().includes(searchQuery.toLowerCase()) ? 2 : 
@@ -275,42 +179,68 @@ export default function Resources() {
     }));
   };
 
-  const handleAddResource = () => {
+  const handleSelectChange = (name: string, value: string) => {
+    setNewResource(prevResource => ({
+      ...prevResource,
+      [name]: value
+    }));
+  };
+
+  const handleAddResource = async () => {
     if (!newResource.title || !newResource.author || !newResource.topic || !newResource.url || !newResource.description) {
       toast({
         variant: "destructive",
         title: "Error",
         description: "Please fill in all fields."
-      })
+      });
       return;
     }
 
-    setResources(prevResources => [...prevResources, {
-      ...newResource,
-      id: prevResources.length > 0 ? Math.max(...prevResources.map(r => r.id)) + 1 : 1,
-      downloadCount: 0,
-      citationCount: 0
-    }]);
-    setNewResource({
-      id: resources.length + 2,
-      title: "",
-      type: "book",
-      author: "",
-      year: new Date().getFullYear(),
-      topic: "",
-      url: "",
-      downloadCount: 0,
-      citationCount: 0,
-      description: ""
-    });
-    setIsDialogOpen(false);
-    toast({
-      title: "Success",
-      description: "Resource added successfully."
-    })
+    try {
+      setIsDialogOpen(false);
+      
+      toast({
+        title: "Saving...",
+        description: "Adding your resource to the database."
+      });
+      
+      const addedResource = await ResourceService.addResource({
+        ...newResource,
+        id: 0,
+        downloadCount: 0,
+        citationCount: 0
+      });
+      
+      setResources(prevResources => [...prevResources, addedResource]);
+      
+      setNewResource({
+        id: 0,
+        title: "",
+        type: "book",
+        author: "",
+        year: new Date().getFullYear(),
+        topic: "",
+        url: "",
+        downloadCount: 0,
+        citationCount: 0,
+        description: ""
+      });
+      
+      toast({
+        title: "Success",
+        description: "Resource added successfully."
+      });
+    } catch (error) {
+      console.error("Error adding resource:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add resource. Please try again."
+      });
+    }
   };
 
-  const topics = [...new Set(initialResources.map(resource => resource.topic))];
+  const topics = [...new Set(resources.map(resource => resource.topic))];
   const resourceTypes = ["book", "research", "course"];
   const typeIcons = {
     book: <Book className="h-4 w-4" />,
@@ -318,7 +248,6 @@ export default function Resources() {
     course: <GraduationCap className="h-4 w-4" />
   };
 
-  // Get active filter count for badge
   const getActiveFilterCount = () => {
     let count = 0;
     if (topicFilter !== "") count++;
@@ -331,7 +260,6 @@ export default function Resources() {
 
   return (
     <Layout>
-      {/* Hero Section */}
       <section className="bg-gradient-to-b from-eduBlue-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
           <div className="text-center max-w-3xl mx-auto">
@@ -357,7 +285,6 @@ export default function Resources() {
         </div>
       </section>
 
-      {/* Filters Section */}
       <section className="py-8 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -533,7 +460,6 @@ export default function Resources() {
             </div>
           </div>
           
-          {/* Active filters display */}
           {getActiveFilterCount() > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="text-sm text-gray-500">Active filters:</span>
@@ -596,157 +522,203 @@ export default function Resources() {
         </div>
       </section>
 
-      {/* Resources Section */}
       <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {sortedResources.length === 0 ? (
-            <div className="text-center py-16">
-              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No resources found</h3>
-              <p className="text-gray-500 mb-6">Try adjusting your search criteria or filters</p>
-              <Button onClick={resetFilters}>Clear All Filters</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {sortedResources.map(resource => (
-                <Card key={resource.id} className="card-hover">
-                  <CardContent className="p-6">
-                    <div className="mb-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {resource.type === "book" ? (
-                          <BookOpen className="h-6 w-6 text-eduBlue-600" />
-                        ) : resource.type === "research" ? (
-                          <FileText className="h-6 w-6 text-eduPurple-600" />
-                        ) : (
-                          <GraduationCap className="h-6 w-6 text-green-600" />
-                        )}
-                        <h3 className="text-lg font-semibold line-clamp-1">{resource.title}</h3>
-                      </div>
-                      <Badge variant="outline" className="capitalize">
-                        {resource.type}
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="animate-spin w-8 h-8 border-4 border-eduBlue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading resources...</p>
+          </div>
+        ) : sortedResources.length === 0 ? (
+          <div className="text-center py-16">
+            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 mb-2">No resources found</h3>
+            <p className="text-gray-500 mb-6">Try adjusting your search criteria or filters</p>
+            <Button onClick={resetFilters}>Clear All Filters</Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {sortedResources.map(resource => (
+              <Card key={resource.id} className="card-hover">
+                <CardContent className="p-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {resource.type === "book" ? (
+                        <BookOpen className="h-6 w-6 text-eduBlue-600" />
+                      ) : resource.type === "research" ? (
+                        <FileText className="h-6 w-6 text-eduPurple-600" />
+                      ) : (
+                        <GraduationCap className="h-6 w-6 text-green-600" />
+                      )}
+                      <h3 className="text-lg font-semibold line-clamp-1">{resource.title}</h3>
+                    </div>
+                    <Badge variant="outline" className="capitalize">
+                      {resource.type}
+                    </Badge>
+                  </div>
+                  <p className="text-gray-600 mb-4 line-clamp-3">{resource.description}</p>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Author:</span> {resource.author}
+                    </div>
+                    <div>
+                      <span className="font-medium">Year:</span> {resource.year}
+                    </div>
+                    <div>
+                      <span className="font-medium">Topic:</span> 
+                      <Badge variant="secondary" className="ml-2 bg-gray-100 hover:bg-gray-200 cursor-pointer" onClick={() => handleTopicFilter(resource.topic)}>
+                        {resource.topic}
                       </Badge>
                     </div>
-                    <p className="text-gray-600 mb-4 line-clamp-3">{resource.description}</p>
-                    <div className="flex flex-col gap-2 text-sm">
-                      <div>
-                        <span className="font-medium">Author:</span> {resource.author}
+                  </div>
+                  <div className="mt-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <Download className="h-4 w-4" />
+                        {resource.downloadCount}
                       </div>
-                      <div>
-                        <span className="font-medium">Year:</span> {resource.year}
-                      </div>
-                      <div>
-                        <span className="font-medium">Topic:</span> 
-                        <Badge variant="secondary" className="ml-2 bg-gray-100 hover:bg-gray-200 cursor-pointer" onClick={() => handleTopicFilter(resource.topic)}>
-                          {resource.topic}
-                        </Badge>
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <LinkIcon className="h-4 w-4" />
+                        {resource.citationCount}
                       </div>
                     </div>
-                    <div className="mt-4 flex justify-between items-center">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-gray-500">
+                    <div className="flex gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link to={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" className="bg-eduBlue-500 hover:bg-eduBlue-600">
+                        <Link to={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                           <Download className="h-4 w-4" />
-                          {resource.downloadCount}
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-500">
-                          <LinkIcon className="h-4 w-4" />
-                          {resource.citationCount}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button asChild variant="outline" size="sm">
-                          <Link to={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button asChild size="sm" className="bg-eduBlue-500 hover:bg-eduBlue-600">
-                          <Link to={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            <Download className="h-4 w-4" />
-                            Download
-                          </Link>
-                        </Button>
-                      </div>
+                          Download
+                        </Link>
+                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="mt-8 bg-eduBlue-500 hover:bg-eduBlue-600 flex items-center justify-center gap-2">
-                <PlusCircle className="h-4 w-4" />
-                Add New Resource
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add New Resource</DialogTitle>
-                <DialogDescription>
-                  Add a new academic resource to the platform.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="title" className="text-right">
-                    Title
-                  </Label>
-                  <Input type="text" id="title" name="title" value={newResource.title} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">
-                    Type
-                  </Label>
-                  <Select onValueChange={(value) => handleInputChange({ target: { name: 'type', value } } as any)}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select a type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="book">Book</SelectItem>
-                      <SelectItem value="research">Research Paper</SelectItem>
-                      <SelectItem value="course">Course Material</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="author" className="text-right">
-                    Author
-                  </Label>
-                  <Input type="text" id="author" name="author" value={newResource.author} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="year" className="text-right">
-                    Year
-                  </Label>
-                  <Input type="number" id="year" name="year" value={newResource.year} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="topic" className="text-right">
-                    Topic
-                  </Label>
-                  <Input type="text" id="topic" name="topic" value={newResource.topic} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="url" className="text-right">
-                    URL
-                  </Label>
-                  <Input type="url" id="url" name="url" value={newResource.url} onChange={handleInputChange} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
-                    Description
-                  </Label>
-                  <Textarea id="description" name="description" value={newResource.description} onChange={handleInputChange} className="col-span-3" />
-                </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="mt-8 bg-eduBlue-500 hover:bg-eduBlue-600 flex items-center justify-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Add New Resource
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Resource</DialogTitle>
+              <DialogDescription>
+                Add a new academic resource to the platform.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">
+                  Title
+                </Label>
+                <Input 
+                  type="text" 
+                  id="title" 
+                  name="title" 
+                  value={newResource.title} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" onClick={handleAddResource}>Add Resource</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="type" className="text-right">
+                  Type
+                </Label>
+                <Select 
+                  value={newResource.type} 
+                  onValueChange={(value) => handleSelectChange("type", value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="book">Book</SelectItem>
+                    <SelectItem value="research">Research Paper</SelectItem>
+                    <SelectItem value="course">Course Material</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="author" className="text-right">
+                  Author
+                </Label>
+                <Input 
+                  type="text" 
+                  id="author" 
+                  name="author" 
+                  value={newResource.author} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="year" className="text-right">
+                  Year
+                </Label>
+                <Input 
+                  type="number" 
+                  id="year" 
+                  name="year" 
+                  value={newResource.year} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="topic" className="text-right">
+                  Topic
+                </Label>
+                <Input 
+                  type="text" 
+                  id="topic" 
+                  name="topic" 
+                  value={newResource.topic} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="url" className="text-right">
+                  URL
+                </Label>
+                <Input 
+                  type="url" 
+                  id="url" 
+                  name="url" 
+                  value={newResource.url} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Textarea 
+                  id="description" 
+                  name="description" 
+                  value={newResource.description} 
+                  onChange={handleInputChange} 
+                  className="col-span-3" 
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" onClick={handleAddResource}>Add Resource</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </section>
     </Layout>
   );

@@ -2,11 +2,37 @@
 import { useEffect } from "react";
 import { UserProfile } from "@clerk/clerk-react";
 import { Layout } from "@/components/layout/Layout";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Profile() {
+  const { toast } = useToast();
+  
   useEffect(() => {
     document.title = "Profile | EduCentral";
-  }, []);
+    
+    // Handle Clerk form submission events
+    const handleFormEvents = () => {
+      const originalFormSubmit = HTMLFormElement.prototype.submit;
+      
+      HTMLFormElement.prototype.submit = function() {
+        // Check if this is a Clerk form
+        if (this.closest('[data-clerk-form]')) {
+          toast({
+            title: "Saving...",
+            description: "Your profile changes are being saved."
+          });
+        }
+        return originalFormSubmit.apply(this);
+      };
+      
+      return () => {
+        HTMLFormElement.prototype.submit = originalFormSubmit;
+      };
+    };
+    
+    const cleanup = handleFormEvents();
+    return cleanup;
+  }, [toast]);
 
   return (
     <Layout>
@@ -41,7 +67,12 @@ export default function Profile() {
                 formFieldAction: "text-xs sm:text-sm",
                 // Better spacing for phone and email sections
                 phoneNumberPrimary: "text-xs sm:text-sm",
-                emailAddressPrimary: "text-xs sm:text-sm"
+                emailAddressPrimary: "text-xs sm:text-sm",
+                // Form button improvements
+                formButtonReset: "text-sm normal-case",
+                formResendButton: "text-sm normal-case",
+                formButtonPrimary: "bg-eduBlue-500 hover:bg-eduBlue-600 text-sm normal-case",
+                accordionTriggerButton: "text-sm normal-case"
               }
             }}
           />
