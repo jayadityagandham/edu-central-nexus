@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,35 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				eduBlue: {
+					50: '#f0f4ff',
+					100: '#dbe4ff',
+					200: '#bac8ff',
+					300: '#91a7ff',
+					400: '#5271ff',
+					500: '#324dff',
+					600: '#2536f5',
+					700: '#1c29e0',
+					800: '#1e23b6',
+					900: '#1e248d',
+				},
+				eduPurple: {
+					50: '#f5f3ff',
+					100: '#ede9fe',
+					200: '#ddd6fe',
+					300: '#c4b5fd',
+					400: '#a78bfa',
+					500: '#8b5cf6',
+					600: '#7c3aed',
+					700: '#6d28d9',
+					800: '#5b21b6',
+					900: '#4c1d95',
 				}
+			},
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+				serif: ['Merriweather', 'serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
