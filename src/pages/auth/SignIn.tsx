@@ -22,7 +22,6 @@ export default function SignIn() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <ClerkSignIn 
-            routing="path" 
             path="/sign-in" 
             signUpUrl="/sign-up"
             appearance={{
@@ -33,11 +32,7 @@ export default function SignIn() {
                 card: "shadow-none",
               },
             }}
-            afterSignInUrl="/"
-            onComplete={() => {
-              setSignInComplete(true);
-              navigate("/");
-            }}
+            redirectUrl="/"
           />
         </div>
       </div>
